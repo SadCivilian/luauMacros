@@ -25,6 +25,12 @@ macro name = fn <param> <param2> <param3> ...
 
 macro expansion = local a = <param>; local b = <param2>; local function <param3>()
 
+to call the macro, you would do:
+
+fn(5,7,"a") -- This would expand the macro into:
+
+local a = 5; local b = 7; local function a()
+
 ```
 
 While this could be promising, it also has the side effect of making less than or greater than symbols be mixed up for parameters when they mean something else in context.
