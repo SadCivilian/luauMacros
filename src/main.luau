@@ -7,6 +7,7 @@ local disablePluginButton = button:CreateButton("disablePluginButton", "Disable 
 local createMacroButton = button:CreateButton("createMacroButton", "Create a macro.", "rbxassetid://11459267",  "Add a macro")
 local deleteMacroButton = button:CreateButton("deleteMacroButton", "Delete a macro.", "rbxassetid://11459267", "Delete macro")
 local outputMacrosButton = button:CreateButton("outputMacrosButton", "Output all your current macros.",  "rbxassetid://11459267", "Output macros")
+local thing = game:GetService("ChangeHistoryService")
 createMacroButton.ClickableWhenViewportHidden = true
 deleteMacroButton.ClickableWhenViewportHidden = true
 disablePluginButton.ClickableWhenViewportHidden = true
@@ -22,6 +23,11 @@ deleteMacroDock.Title = "Delete Macro"
 
 createMacroButton.Click:Connect(function()
 	addMacroDock.Enabled = true
+	for i, v in pairs(addMacroDock:GetChildren()) do
+		if v:IsA("TextBox") then
+			v.Text = ""
+		end
+	end
 end)
 
 deleteMacroButton.Click:Connect(function()
@@ -29,6 +35,11 @@ deleteMacroButton.Click:Connect(function()
 		return
 	else
 		deleteMacroDock.Enabled = true
+		for i, v in pairs(deleteMacroDock:GetChildren()) do
+			if v:IsA("TextBox") then
+				v.Text = ""
+			end
+		end
 	end
 end)
 
@@ -71,6 +82,12 @@ local function flushBuffer() : string
 	return flushed
 end
 
+local function pop_backOfBuffer() : string
+	local flush = MACRO_INPUT_BUFFER[#MACRO_INPUT_BUFFER]
+	table.remove(MACRO_INPUT_BUFFER, #MACRO_INPUT_BUFFER)
+	return flush
+end
+
 @deprecated
 -- unused
 local function isInComment(line : number, col : number) : boolean
@@ -94,6 +111,7 @@ local function setupUI()
 	MacroExpansion.Parent = addMacroDock
 	MacroExpansion.BackgroundColor3 = Color3.new(0,0,0)
 	MacroExpansion.TextColor3 = Color3.new(1,1,1)
+	MacroExpansion.MultiLine = true
 
 	local MacroName = Instance.new("TextBox")
 	MacroName.Name = "MacroName"
@@ -170,27 +188,39 @@ local function InitKeylogger()
 	plugin.Unloading:Connect(function()
 		plugin:SetSetting("previousSession", CURRENT_MACROS)
 	end)
-	local LastUsedExpansion
+	local LastUsedExpansionText
+	local bufferLen = #MACRO_INPUT_BUFFER
+	local LAST_NON_SPACE_OR_UNDO_POS = 0
 	ScriptEditorService.TextDocumentDidChange:Connect(function(doc : ScriptDocument, changesArray : {[number] : {[string] : any}})
 		local text = changesArray[1]["text"]
-		if LastUsedExpansion == text then
-			LastUsedExpansion = nil
+		if LastUsedExpansionText == text then
+			LastUsedExpansionText = nil
 			return
 		end
 		if text == "" then
+			local charactersRemoved = changesArray[1]["range"]["end"]["character"] - changesArray[1]["range"]["start"]["character"]
+			if charactersRemoved == 1 then
+				pop_backOfBuffer()
+			else
+				flushBuffer()
+			end
 			return
 		elseif text == " " then
 			local flushed = flushBuffer()
 			local flushLen = flushed:len()
 			for macro, expansion in CURRENT_MACROS do
 				if flushed == macro and PLUGIN_ENABLED then
+					local appended = expansion .. " "
 					local cursorLine, cursorChar, anchorLine, anchorChar = CURRENT_DOCUMENT:GetSelection()
-					LastUsedExpansion = expansion
-					CURRENT_DOCUMENT:EditTextAsync(expansion, cursorLine, cursorChar - (flushLen + 1), anchorLine, anchorChar)
+					LastUsedExpansionText = appended
+					CURRENT_DOCUMENT:EditTextAsync(appended, cursorLine, cursorChar - (flushLen + 1), anchorLine, anchorChar)
 					break
 				end
 			end
+		elseif text == "		"  or text == "\t" then -- space or tab character
+			return
 		else
+			LAST_NON_SPACE_OR_UNDO_POS = changesArray[1]["range"]["start"]["character"]
 			table.insert(MACRO_INPUT_BUFFER, text)
 		end
 	end)
