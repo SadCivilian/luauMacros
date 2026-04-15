@@ -434,6 +434,7 @@ local function InitKeylogger()
 	local LAST_CHAR_TYPED : string
 	local FEEDING_VARIABLE_PARAMETERS : boolean = false
 	ScriptEditorService.TextDocumentDidChange:Connect(function(doc : ScriptDocument, changesArray : {[number] : {[string] : any}})
+		if doc:IsCommandBar() then return end
 		local text = changesArray[1]["text"] :: string
 		local cursorLine, cursorChar = CURRENT_DOCUMENT:GetSelection()
 		if isInComment(cursorLine, cursorChar) then
