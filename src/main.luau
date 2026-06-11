@@ -8,7 +8,7 @@ export type Macro = {
 
 --[[
 NOTES:
-make macro string validation already maybe you retard
+make macro string validation already maybe 
 then we're somewhat done as that covers any edge cases of a non variable macro with a < or > in the name
 ]]
 
@@ -483,7 +483,7 @@ local function InitKeylogger()
 					end
 				end
 			end
-		elseif text == "\t" then
+		elseif text == "\t" or text == "\n" then
 			return
 		elseif text == "<" then
 			table.insert(MACRO_INPUT_BUFFER, text)
